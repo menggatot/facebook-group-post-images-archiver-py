@@ -8,7 +8,7 @@ This project's purpose is to archive every single image of a single profile in t
  - urllib
  - time
  - re
-## The Priparation
+## The Preparation
 **> How to get the url in line 25**<br/>
 It has to be the mobile version of FB ex: `m.facebook.com`<br/>
 To get the URL, you need to press their profile when you're on the group page while you're in the mobile version of Facebook<br/>
