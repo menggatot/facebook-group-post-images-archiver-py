@@ -32,20 +32,14 @@ def check_element_by_link_text(link_text):
         return False
     return True
 
-def get_timestamp():
-    # Get the post's time
-    timestamp_raw = driver.find_element_by_tag_name(
-        'abbr').get_attribute('innerHTML')
+def get_timestamp(i):
+    timestamp_raw_list = driver.find_elements_by_tag_name('abbr')
+    timestamp_raw = timestamp_raw_list[i].get_attribute(
+        'innerHTML')
     if timestamp_raw == "":
         timestamp_raw = "Null"
     timestamp_non_alphanumeric = timestamp_raw.replace(" ", "_")
     timestamp = re.sub("[^0-9a-zA-Z]+", "_", timestamp_non_alphanumeric)
-    return timestamp
-
-def multipic_get_timestamp():
-    timestamp_raw = driver.find_element_by_xpath(
-        '/html/body/div[2]/div/div[2]/article/div/div/div[1]/div/div[1]/div[1]/div/div[2]/abbr').get_attribute('innerHTML').replace(" ", "_")
-    timestamp = re.sub("[^0-9a-zA-Z]+", "_", timestamp_raw)
     return timestamp
 
 def open_new_tab(url):
@@ -80,29 +74,11 @@ last_height = driver.execute_script("return document.body.scrollHeight")
 
 poster_count = 1
 multipic_count = 5
+timestamp_count = 0
 while True:
-# post with single image
-    posts = driver.find_elements_by_class_name(
-        "_39pi")
-    poster = posts[poster_count]  # find the post with single image
-    url = poster.get_attribute('href') # get the post url
-    # print(url)
-    open_new_tab(url)
-    timestamp = get_timestamp() # get timestamp
-    timestamp_format = f'./image/{timestamp}.jpg'
-    view_full_size = driver.find_element_by_link_text(
-        "View Full Size").get_attribute('href')  # Get the image URL
-    driver.get(view_full_size)
-    image_url = driver.find_element_by_tag_name('img').get_attribute('src')
-    urllib.request.urlretrieve(
-        image_url, timestamp_format)  # Download Image
-    poster_count = poster_count + 1  # add 1 to the poster_count counter
-    print('saving single', timestamp_format)
-    time.sleep(1)  # slowdown for 1 sec and close the new page
-    close_new_tab()
-    time.sleep(0.5)
+    timestamp = get_timestamp(timestamp_count)
 
-# post with multiple image
+    # post with multiple image
     multipic_url = driver.find_elements_by_class_name("_26ih")
     # print('nope it still', len(multipic_url))
     if len(multipic_url) > multipic_count:
@@ -115,9 +91,7 @@ while True:
         the_images = driver.find_elements_by_class_name(
             "_56be")
         current_url = driver.current_url
-        # get timestamp
-        mutlipic_timestamp = multipic_get_timestamp()
-
+        # print(timestamp, '\n', current_url, '\n\n')
         # fuck it going MBasic mode!
         mbasic_formater = current_url.replace('https://m', 'https://mbasic')
         # open the url to new page
@@ -132,7 +106,7 @@ while True:
             if current_url2 in img_id_list:
                 print('last image, done!')
                 break
-            filename_format = f'./image/{mutlipic_timestamp}_{img_count}.jpg'
+            filename_format = f'./image/{timestamp}_p{img_count}.jpg'
             img_id_list.append(current_url2)
             # print(current_url2)
             driver.find_element_by_xpath(
@@ -149,14 +123,36 @@ while True:
             img_count = img_count + 1
             time.sleep(0.5)
         close_new_tab()
+
         driver.back()
+        timestamp_count = timestamp_count + 1
+    else:  # post with single image
+        posts = driver.find_elements_by_class_name(
+            "_39pi")
+        poster = posts[poster_count]  # find the post with single image
+        url = poster.get_attribute('href')  # get the post url
+        # print(timestamp, '\n', url, '\n\n')
+        open_new_tab(url)
+        timestamp_format = f'./image/{timestamp}.jpg'
+        view_full_size = driver.find_element_by_link_text(
+            "View Full Size").get_attribute('href')  # Get the image URL
+        driver.get(view_full_size)
+        image_url = driver.find_element_by_tag_name('img').get_attribute('src')
+        # print(image_url)
+        urllib.request.urlretrieve(
+        image_url, timestamp_format)  # Download Image
+        poster_count = poster_count + 1  # add 1 to the poster_count counter
+        print('saving single', timestamp_format)
+        time.sleep(0.5)
+        close_new_tab()
+        time.sleep(0.5)
+        timestamp_count = timestamp_count + 1
 
     if (poster_count == len(posts)) and (len(multipic_url) == multipic_count):
         # Scroll down to bottom
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         # Wait to load page
         time.sleep(3)
-
         # Calculate new scroll height and compare with last scroll height
         new_height = driver.execute_script("return document.body.scrollHeight")
         if new_height == last_height:
