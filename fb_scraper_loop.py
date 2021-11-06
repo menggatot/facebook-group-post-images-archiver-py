@@ -13,7 +13,7 @@ import imagehash
 import glob
 import os
 
-# driver = webdriver.Chrome('I:\Project\Python\chromeHeadless\chromedriver.exe')
+
 options = Options()
 options.page_load_strategy = 'normal'
 options.add_argument('log-level=3')
@@ -37,7 +37,7 @@ driver.get(
 # check if element by link text is exist
 def check_element_by_link_text(link_text):
     try:
-        driver.find_element_by_link_text(link_text)
+        driver.find_element(By.LINK_TEXT,link_text)
     except NoSuchElementException:
         return False
     return True
@@ -49,7 +49,7 @@ def scroll_down():
     time.sleep(3)
 
 def timestamp_raw_list():
-    return driver.find_elements_by_tag_name('abbr')
+    return driver.find_elements(By.TAG_NAME,'abbr')
 
 def get_timestamp(i):
     timestamp_raw = timestamp_raw_list()[i].get_attribute(
@@ -85,7 +85,7 @@ def multipic_img_ids():
 def click_next(current_url2):
     img_id_list.append(current_url2)
     # print(current_url2)
-    driver.find_element_by_xpath(
+    driver.find_element(By.XPATH,
         '/html/body/div/div/div[2]/div/div[1]/div/div/div[1]/div/div[2]/table/tbody/tr/td[2]/a').click()
 
 
@@ -121,14 +121,16 @@ def find_dublicate(trash_to_find):
         except FileNotFoundError:
             break
     for file in what_it_found:
-        file_name = re.sub(r'^.*?\\', '', file)
-        os.replace(file, f'dublicate/{file_name}')
+        os.remove(file)
+        # file_name = re.sub(r'^.*?\\', '', file)
+        # os.replace(file, f'dublicate/{file_name}')
 
 # press the okay button if it get blocked by facebook
 time.sleep(2)
 if check_element_by_link_text('Okay'):
-    driver.find_element_by_link_text('Okay').click()
-    time.sleep(2)
+    driver.find_element(By.LINK_TEXT,'Okay').click()
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, 'story_body_container')))
 
 # Get scroll height # https://tinyurl.com/uf6z66j2
 last_height = driver.execute_script("return document.body.scrollHeight")
@@ -139,15 +141,15 @@ timestamp_count = 0
 title = str(driver.title).replace(" ", "_")
 scroll_count = 0
 while True:
-    timestamp_elements = driver.find_elements_by_tag_name('abbr')
+    timestamp_elements = driver.find_elements(By.TAG_NAME,'abbr')
 
     # post with single image
-    posts = driver.find_elements_by_class_name(
+    posts = driver.find_elements(By.CLASS_NAME,
         "_39pi")
     # post with multiple image
-    multipic_url = driver.find_elements_by_class_name("_26ih")
+    multipic_url = driver.find_elements(By.CLASS_NAME,"_26ih")
 
-    if timestamp_count == len(timestamp_raw_list()):
+    if (len(timestamp_raw_list()) == timestamp_count ) or (len(posts) == scroll_count) :
         scroll_down()
         scroll_count += 1
         print(f'you\'re now at scroll count {scroll_count}')
@@ -158,8 +160,7 @@ while True:
         f'image/{title}_{timestamp}*.jpg'
     )
 
-    # change this value to change how many time it will scroll
-    if scroll_count == 3:
+    if scroll_count == 2:
         print('you\'re at the last line')
         driver.execute_script(
             "window.scrollTo(0, 0);")
@@ -167,8 +168,8 @@ while True:
         multipic_count = 5
         timestamp_count = 0
         scroll_count = 0
-        break # comment this and uncomment 2 line bellow this make the scrip loop
-        # time.sleep(60) # how long the script need to wait
+        break
+        # time.sleep(60)
         # continue
 
     file_path_single = Path(f'image/{title}_{timestamp}.jpg')
@@ -179,15 +180,17 @@ while True:
         print('found multipic post in', multipic_count)
         multipic_url[multipic_count - 1].click()
         # wait for the page to load
-        time.sleep(2)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'story_body_container')))
         current_url = driver.current_url
         # print(timestamp, '\n', current_url, '\n\n')
         # fuck it going MBasic mode!
         mbasic_formater = current_url.replace('https://m', 'https://mbasic')
         # open the url to new page
         open_new_tab(mbasic_formater)
-        time.sleep(1)
-        driver.find_element_by_xpath(
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'bi')))
+        driver.find_element(By.XPATH,
             '/html/body/div/div/div[2]/div/div[1]/div[1]/a[1]').click()
         img_id_list = list()
         img_count = 0
@@ -205,7 +208,7 @@ while True:
                 img_count = img_count + 1
                 continue
             click_next(current_url2)
-            fullsize_img_url = driver.find_element_by_xpath(
+            fullsize_img_url = driver.find_element(By.XPATH,
                 '/html/body/div/div/div[2]/div/div[1]/div/div/div[3]/div[1]/div[2]/span/div/span/a[1]').get_attribute('href')
             print('saving multi', file_path_multipic)
             driver.get(fullsize_img_url)
@@ -215,31 +218,34 @@ while True:
             urllib.request.urlretrieve(
                 image_url, file_path_multipic)  # Download Image
             img_count = img_count + 1
-            time.sleep(0.5)
+            # time.sleep(0.5)
         close_new_tab()
 
         driver.back()
         timestamp_count = timestamp_count + 1
     else:  # post with single image
+        # print(f'now you\'re at single pic post {poster_count}')
         find_dublicate(file_path_single)
         if file_path_single.is_file():
-            print(f'skipping {file_path_single} file exist', timestamp_count)
-            poster_count = poster_count + 1
+            print(f'skipping {file_path_single} file exist',
+                    'time stamp:', timestamp_count, 'post count:', poster_count)
+            poster_count += 1
             timestamp_count = timestamp_count + 1
             continue
         poster = posts[poster_count]  # find the post with single image
         url = poster.get_attribute('href')  # get the post url
         # print(timestamp, '\n', url, '\n\n')
         open_new_tab(url)
-        view_full_size = driver.find_element_by_link_text(
+        view_full_size = driver.find_element(By.LINK_TEXT,
             "View Full Size").get_attribute('href')  # Get the image URL
         driver.get(view_full_size)
-        image_url = driver.find_element_by_tag_name('img').get_attribute('src')
+        image_url = driver.find_element(By.TAG_NAME,'img').get_attribute('src')
         # print(image_url)
         urllib.request.urlretrieve(
             image_url, file_path_single)  # Download Image
-        poster_count = poster_count + 1  # add 1 to the poster_count counter
-        print('saving single', file_path_single)
-        time.sleep(0.5)
+        poster_count += 1  # add 1 to the poster_count counter
+        print('saving single', file_path_single,
+                'time stamp:', timestamp_count, 'post count:', poster_count)
+        # time.sleep(0.5)
         close_new_tab()
-        timestamp_count = timestamp_count + 1
+        timestamp_count += 1
